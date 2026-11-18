@@ -11,7 +11,7 @@
 
 
 
-Технологічний стек — HTML, CSS, JavaScript, localStorage (якщо команда його затвердила).
+Технологічний стек — HTML, CSS, JavaScript, localStorage .
 
 
 
