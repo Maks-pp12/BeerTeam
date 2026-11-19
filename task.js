@@ -1,1 +1,47 @@
+/**
+ * Створює об'єкт навчального завдання, сумісний із localStorage (JSON).
+ *
+ * @param {string} title - Назва завдання
+ * @param {string} subject - Навчальний предмет
+ * @param {string} deadline - Дедлайн у форматі YYYY-MM-DD
+ * @param {string} type - Тип роботи (наприклад: 'Лабораторна', 'Практична', 'Курсова', 'Тест')
+ * @param {boolean} [completed=false] - Статус виконання
+ * @returns {Object} Об'єкт завдання
+ */
+export function createTask(title, subject, deadline, type, completed = false) {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(deadline)) {
+    throw new Error('Дедлайн повинен бути у форматі YYYY-MM-DD');
+  }
+
+  return {
+    id: generateUniqueId(),
+    title: String(title),
+    subject: String(subject),
+    deadline: deadline,
+    type: String(type),
+    completed: Boolean(completed),
+  };
+}
+
+/**
+ * Генерує унікальний строковий ID.
+ * @returns {string}
+ */
+function generateUniqueId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+export const initialTasks = [
+  createTask(
+    'Створити структуру даних',
+    'Інженерія програмного забезпечення',
+    '2026-11-25',
+    'Лабораторна робота',
+    false
+  ),
+];
 
