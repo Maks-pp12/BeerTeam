@@ -1,4 +1,4 @@
-﻿* {
+* {
   box-sizing: border-box
 }
 
@@ -1544,4 +1544,17 @@ h1 {
   max-height: calc(100vh - 20px)
 }
 
+}
+
+#work-date {
+  position: relative;
+}
+
+#work-date::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
 }
