@@ -2,15 +2,15 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const defaultWorks = [
-  { id: 1, name: 'Лабораторна №4 — Алгоритми Краскала і Прима', subject: 'Дискретна математика', type: 'Лабораторна', date: '2026-10-10', time: '23:59', status: 'В процесі', statusLabel: 'Післязавтра', priority: 'Високий', score: '', maxScore: '', notes: '' },
-  { id: 2, name: 'Практична №7 — Нормалізація БД', subject: 'Бази даних', type: 'Практична', date: '2026-10-12', time: '18:00', status: 'В процесі', statusLabel: 'Через 4 дні', priority: 'Середній', score: '', maxScore: '', notes: '' },
-  { id: 3, name: 'Лабораторна №3 — Багатопоточність', subject: 'Операційні системи', type: 'Лабораторна', date: '2026-10-07', time: '23:59', status: 'Прострочено', statusLabel: 'Прострочено на 1 день', priority: 'Високий', score: '', maxScore: '', notes: '' },
-  { id: 4, name: 'Практична №5 — Невизначені інтеграли', subject: 'Вища математика', type: 'Практична', date: '2026-10-15', time: '23:59', status: 'В процесі', statusLabel: 'Через 7 днів', priority: 'Низький', score: '', maxScore: '', notes: '' },
-  { id: 5, name: 'Лабораторна №2 — Робота з Git', subject: 'Основи програмування', type: 'Лабораторна', date: '2026-10-05', time: '23:59', status: 'Виконано', statusLabel: 'Виконано', priority: 'Середній', score: '', maxScore: '', notes: '' },
-  { id: 6, name: 'Практична №4 — Обхід графів', subject: 'Дискретна математика', type: 'Практична', date: '2026-10-03', time: '18:00', status: 'Виконано', statusLabel: 'Виконано', priority: 'Низький', score: '', maxScore: '', notes: '' }
+  { id: 1, name: 'Лабораторна №4 — Алгоритми Краскала і Прима', subject: 'Дискретна математика', type: 'Лабораторна', date: '2026-12-02', time: '23:59', status: 'В процесі', priority: 'Високий', score: '', maxScore: '', notes: '' },
+  { id: 2, name: 'Практична №7 — Нормалізація БД', subject: 'Бази даних', type: 'Практична', date: '2026-12-05', time: '18:00', status: 'В процесі', priority: 'Середній', score: '', maxScore: '', notes: '' },
+  { id: 3, name: 'Лабораторна №3 — Багатопоточність', subject: 'Операційні системи', type: 'Лабораторна', date: '2026-11-26', time: '23:59', status: 'В процесі', priority: 'Високий', score: '', maxScore: '', notes: '' },
+  { id: 4, name: 'Практична №5 — Невизначені інтеграли', subject: 'Вища математика', type: 'Практична', date: '2026-12-10', time: '23:59', status: 'В процесі', priority: 'Низький', score: '', maxScore: '', notes: '' },
+  { id: 5, name: 'Лабораторна №2 — Робота з Git', subject: 'Основи програмування', type: 'Лабораторна', date: '2026-12-01', time: '23:59', status: 'Виконано', priority: 'Середній', score: '', maxScore: '', notes: '' },
+  { id: 6, name: 'Практична №4 — Обхід графів', subject: 'Дискретна математика', type: 'Практична', date: '2026-12-08', time: '18:00', status: 'Виконано', priority: 'Низький', score: '', maxScore: '', notes: '' }
 ];
 
-let works = JSON.parse(localStorage.getItem('workTrackerWorksV2')) || defaultWorks;
+let works = JSON.parse(localStorage.getItem('workTrackerWorksV3')) || defaultWorks;
 let currentFilter = 'all';
 let selectedType = 'Лабораторна';
 let selectedPriority = 'Середній';
@@ -21,68 +21,136 @@ const dateText = (value) => {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short' }).format(date).replace('.', '');
 };
 
-function isoToDot(value) {
-  const [year, month, day] = value.split('-');
-  return `${day}.${month}.${year}`;
-}
-
-function dotToIso(value) {
-  const match = String(value).trim().match(/^([0-3]?\d)\.([0-1]?\d)\.((?:19|20)\d{2})$/);
-  if (!match) return '';
-  const [, day, month, year] = match;
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+function toIsoDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function saveWorks() {
-  localStorage.setItem('workTrackerWorksV2', JSON.stringify(works));
+  localStorage.setItem('workTrackerWorksV3', JSON.stringify(works));
 }
 
-function statusClass(work) {
-  if (work.status === 'Виконано') return 'status-done';
-  if (work.status === 'Прострочено') return 'status-late';
-  if (work.statusLabel === 'Післязавтра') return 'status-soon';
-  return 'status-future';
+function pluralDays(days) {
+  const mod10 = days % 10;
+  const mod100 = days % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${days} день`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${days} дні`;
+  return `${days} днів`;
 }
 
-function statusLabel(work) {
-  return work.statusLabel || work.status;
+function getWorkDeadlineInfo(work) {
+  if (work.status === 'Виконано') {
+    return { isOverdue: false, className: 'status-done', label: 'Виконано' };
+  }
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [y, m, d] = work.date.split('-').map(Number);
+  const target = new Date(y, m - 1, d);
+  const diffDays = Math.round((target - todayStart) / 86400000);
+
+  if (diffDays < 0) {
+    return {
+      isOverdue: true,
+      className: 'status-late',
+      label: `Прострочено на ${pluralDays(Math.abs(diffDays))}`
+    };
+  }
+  if (diffDays === 0) {
+    return { isOverdue: false, className: 'status-soon', label: 'Сьогодні' };
+  }
+  if (diffDays === 1) {
+    return { isOverdue: false, className: 'status-soon', label: 'Завтра' };
+  }
+  if (diffDays === 2) {
+    return { isOverdue: false, className: 'status-soon', label: 'Післязавтра' };
+  }
+  return {
+    isOverdue: false,
+    className: 'status-future',
+    label: `Через ${pluralDays(diffDays)}`
+  };
+}
+
+function updateSubtitle() {
+  if ($('h1').textContent === 'Мій профіль') {
+    $('.subtitle').textContent = 'Отримані бали та результати здач — в одному місці';
+    return;
+  }
+
+  const now = new Date();
+  const formatted = new Intl.DateTimeFormat('uk-UA', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  }).format(now);
+  const todayText = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const upcomingDiffs = works
+    .filter(w => w.status !== 'Виконано' && w.date)
+    .map(w => {
+      const [y, m, d] = w.date.split('-').map(Number);
+      const target = new Date(y, m - 1, d);
+      return Math.round((target - todayStart) / 86400000);
+    })
+    .filter(diff => diff >= 0)
+    .sort((a, b) => a - b);
+
+  let deadlineText = 'активних дедлайнів немає';
+  if (upcomingDiffs.length > 0) {
+    const nearest = upcomingDiffs[0];
+    if (nearest === 0) deadlineText = 'найближчий дедлайн сьогодні';
+    else if (nearest === 1) deadlineText = 'найближчий дедлайн завтра';
+    else deadlineText = `найближчий дедлайн через ${pluralDays(nearest)}`;
+  }
+
+  $('.subtitle').textContent = `${todayText} · ${deadlineText}`;
 }
 
 function render() {
+  const now = new Date();
+  const todayIso = toIsoDate(now);
+  const weekEndIso = toIsoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 6));
+
   const search = $('#search').value.trim().toLowerCase();
   let filtered = works.filter(work => {
     const matchesSearch = !search || `${work.name} ${work.subject}`.toLowerCase().includes(search);
     const matchesFilter = currentFilter === 'all' ||
       (currentFilter === 'done' ? work.status === 'Виконано' :
       currentFilter === 'active' ? work.status !== 'Виконано' :
-      currentFilter === 'overdue' ? work.status === 'Прострочено' :
-      currentFilter === 'today' ? work.date === '2026-10-08' :
-      currentFilter === 'week' ? work.date >= '2026-10-08' && work.date <= '2026-10-14' :
+      currentFilter === 'overdue' ? getWorkDeadlineInfo(work).isOverdue :
+      currentFilter === 'today' ? work.date === todayIso :
+      currentFilter === 'week' ? work.date >= todayIso && work.date <= weekEndIso :
       work.type === currentFilter);
     return matchesSearch && matchesFilter;
   });
 
   const sort = $('#sort').value;
   filtered.sort((a, b) => {
-    if (sort === 'date-desc') return b.date.localeCompare(a.date);
-    if (sort === 'name') return a.name.localeCompare(b.name, 'uk');
-    if (sort === 'priority') return ['Високий','Середній','Низький'].indexOf(a.priority) - ['Високий','Середній','Низький'].indexOf(b.priority);
+    if (sort === 'date') return `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`);
+    if (sort === 'date-desc') return `${b.date} ${b.time || ''}`.localeCompare(`${a.date} ${a.time || ''}`);
+    if (sort === 'name') return a.name.localeCompare(b.name, 'uk', { numeric: true });
+    if (sort === 'priority') return ['Високий', 'Середній', 'Низький'].indexOf(a.priority) - ['Високий', 'Середній', 'Низький'].indexOf(b.priority);
     return a.id - b.id;
   });
 
-  $('#work-list').innerHTML = filtered.map(work => `
+  $('#work-list').innerHTML = filtered.map(work => {
+    const info = getWorkDeadlineInfo(work);
+    return `
     <tr class="${work.status === 'Виконано' ? 'completed' : ''}" data-id="${work.id}">
       <td><input class="work-check" type="checkbox" aria-label="Позначити виконаною" ${work.status === 'Виконано' ? 'checked' : ''}></td>
       <td><div class="work-title">${escapeHtml(work.name)}</div><div class="work-subtitle">${escapeHtml(work.subject)} · ${escapeHtml(work.type)}</div></td>
       <td><div>${dateText(work.date)}</div></td>
-      <td><span class="status-pill ${statusClass(work)}">${statusLabel(work)}</span></td>
+      <td><span class="status-pill ${info.className}">${info.label}</span></td>
       <td class="priority">${work.priority}</td>
       <td>${work.score ? `<button class="grade-btn">${work.score}/${work.maxScore}</button>` : '<span>—</span>'}</td>
       <td><button class="edit-btn" aria-label="Редагувати роботу">✎</button></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   $('#empty-state').hidden = filtered.length > 0;
   updateStats();
+  updateSubtitle();
 }
 
 function escapeHtml(value) {
@@ -90,21 +158,30 @@ function escapeHtml(value) {
 }
 
 function updateStats() {
+  const now = new Date();
+  const todayIso = toIsoDate(now);
+  const weekEndIso = toIsoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 6));
+
   const total = works.length;
   const done = works.filter(w => w.status === 'Виконано').length;
-  const overdue = works.filter(w => w.status === 'Прострочено').length;
-  const progress = works.filter(w => w.status !== 'Виконано' && w.status !== 'Прострочено').length;
+  const overdue = works.filter(w => getWorkDeadlineInfo(w).isOverdue).length;
+  const progress = works.filter(w => w.status !== 'Виконано' && !getWorkDeadlineInfo(w).isOverdue).length;
+  const todayCount = works.filter(w => w.date === todayIso).length;
+  const weekCount = works.filter(w => w.date >= todayIso && w.date <= weekEndIso).length;
+
   $('#stat-total').textContent = total;
   $('#stat-progress').textContent = progress;
   $('#stat-done').textContent = done;
   $('#stat-overdue').textContent = overdue;
   $('#nav-all').textContent = total;
+  $('#nav-today').textContent = todayCount;
+  $('#nav-week').textContent = weekCount;
   $('#nav-done').textContent = done;
   $('#nav-overdue').textContent = overdue;
 }
 
 function chooseSegment(container, attribute, value) {
-  $$( `[${attribute}]`, $(container)).forEach(button => button.classList.toggle('chosen', button.getAttribute(attribute) === value));
+  $$(`[${attribute}]`, $(container)).forEach(button => button.classList.toggle('chosen', button.getAttribute(attribute) === value));
 }
 
 function openModal(work = null) {
@@ -113,7 +190,7 @@ function openModal(work = null) {
   $('#work-name').value = work?.name || '';
   $('#work-subject').value = work?.subject || 'Дискретна математика';
   $('#reminder').value = 'За 2 дні';
-  $('#work-date').value = work?.date ? isoToDot(work.date) : '10.10.2026';
+  $('#work-date').value = work?.date || toIsoDate(new Date());
   $('#work-time').value = work?.time || '23:59';
   $('#score').value = work?.score || '';
   $('#max-score').value = work?.maxScore || '';
@@ -140,12 +217,6 @@ function showToast(message) {
 }
 
 $('#search').addEventListener('input', render);
-$('#work-date').addEventListener('input', event => {
-  let digits = event.target.value.replace(/\D/g, '').slice(0, 8);
-  if (digits.length > 4) event.target.value = `${digits.slice(0,2)}.${digits.slice(2,4)}.${digits.slice(4)}`;
-  else if (digits.length > 2) event.target.value = `${digits.slice(0,2)}.${digits.slice(2)}`;
-  else event.target.value = digits;
-});
 $('#sort').addEventListener('change', render);
 $('#add-work').addEventListener('click', () => {
   if ($('h1').textContent === 'Мій профіль') {
@@ -181,13 +252,9 @@ $$('[data-status]').forEach(button => button.addEventListener('click', () => {
 
 $('#work-form').addEventListener('submit', event => {
   event.preventDefault();
-  const isoDate = dotToIso($('#work-date').value);
-  if (!isoDate) {
-    $('#work-date').setCustomValidity('Введіть дату у форматі ДД.MM.RRRR');
-    $('#work-date').reportValidity();
-    return;
-  }
-  $('#work-date').setCustomValidity('');
+  const isoDate = $('#work-date').value;
+  if (!isoDate) return;
+
   const id = $('#work-id').value;
   const work = {
     id: id ? Number(id) : Date.now(),
@@ -255,8 +322,8 @@ profileView.innerHTML = `
 <section class="profile-table-card">
   <header class="profile-card-heading"><h3>Здані роботи <span id="profile-graded-count">2</span></h3><p>2 роботи очікують внесення балів</p></header>
   <div class="profile-table-wrap"><table class="profile-table"><thead><tr><th>РОБОТА / ПРЕДМЕТ</th><th>ДАТА</th><th>СТАТУС</th><th>ОТРИМАНО / МАКС.</th><th>ДІЯ</th></tr></thead><tbody>
-    <tr><td><strong>Лабораторна №2 — Робота з Git</strong><small>Основи програмування</small></td><td>5 жовтня</td><td><span class="status-pill status-done">Виконано</span></td><td><b>— / —</b><small>Бали не внесено</small></td><td><button class="profile-grade-btn">Внести бали</button></td></tr>
-    <tr><td><strong>Практична №4 — Обхід графів</strong><small>Дискретна математика</small></td><td>3 жовтня</td><td><span class="status-pill status-done">Виконано</span></td><td><b>— / —</b><small>Бали не внесено</small></td><td><button class="profile-grade-btn">Внести бали</button></td></tr>
+    <tr><td><strong>Лабораторна №2 — Робота з Git</strong><small>Основи програмування</small></td><td>1 грудня</td><td><span class="status-pill status-done">Виконано</span></td><td><b>— / —</b><small>Бали не внесено</small></td><td><button class="profile-grade-btn">Внести бали</button></td></tr>
+    <tr><td><strong>Практична №4 — Обхід графів</strong><small>Дискретна математика</small></td><td>8 грудня</td><td><span class="status-pill status-done">Виконано</span></td><td><b>— / —</b><small>Бали не внесено</small></td><td><button class="profile-grade-btn">Внести бали</button></td></tr>
   </tbody></table></div>
   <footer class="profile-card-footer">Внести отримані та максимальні бали. Після збереження оцінку можна редагувати.</footer>
 </section>
@@ -274,27 +341,29 @@ $('.main-content').appendChild(profileView);
 function showProfile(show) {
   ['.stats-grid','.toolbar','.table-wrap','.mobile-note'].forEach(selector => $(selector).hidden = show);
   profileView.hidden = !show;
-  $('.subtitle').textContent = show ? 'Отримані бали та результати здач — в одному місці' : 'Четвер, 8 жовтня · найближчий дедлайн через 2 дні';
   $('.search-box').hidden = show;
   $('#add-work').textContent = show ? '← До списку робіт' : '＋ Нова робота';
   $('#add-work').classList.toggle('back-to-works', show);
   if (show) {
     $('h1').textContent = 'Мій профіль';
     $('#profile-done').textContent = works.filter(w => w.status === 'Виконано').length;
-    $('#profile-progress').textContent = works.filter(w => w.status === 'В процесі').length;
+    $('#profile-progress').textContent = works.filter(w => w.status !== 'Виконано' && !getWorkDeadlineInfo(w).isOverdue).length;
     $('#profile-total').textContent = works.length;
-    $('#profile-overdue').textContent = works.filter(w => w.status === 'Прострочено').length;
+    $('#profile-overdue').textContent = works.filter(w => getWorkDeadlineInfo(w).isOverdue).length;
   } else {
     $('h1').textContent = 'Мої роботи';
   }
+  updateSubtitle();
 }
 
 $$('.nav-item').forEach(button => button.addEventListener('click', () => {
   $$('.nav-item').forEach(item => item.classList.remove('active'));
+  $$('.subject').forEach(item => item.classList.remove('active'));
   button.classList.add('active');
   const nav = button.dataset.nav;
   showProfile(nav === 'profile');
   if (nav !== 'profile') {
+    if (nav === 'all') $('#search').value = '';
     currentFilter = ['done','today','week','overdue','active'].includes(nav) ? nav : 'all';
     $$('.filter-chip').forEach(item => item.classList.toggle('selected', item.dataset.filter === currentFilter));
     render();
@@ -303,7 +372,11 @@ $$('.nav-item').forEach(button => button.addEventListener('click', () => {
 
 $$('.subject').forEach(button => button.addEventListener('click', () => {
   $$('.nav-item').forEach(item => item.classList.remove('active'));
+  $$('.subject').forEach(item => item.classList.remove('active'));
+  button.classList.add('active');
   showProfile(false);
+  currentFilter = 'all';
+  $$('.filter-chip').forEach(item => item.classList.toggle('selected', item.dataset.filter === 'all'));
   $('#search').value = button.dataset.subject;
   render();
 }));
